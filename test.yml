@@ -9,6 +9,10 @@ custom:
   intg_acc: XXXX
   trans_acc: XXXX
   role: rpl-cross-role
+  bckname_accounting_out: bi-${opt:region}-${opt:stage}-batch-accounting-out
+  bckname_customer_out: bi-${opt:region}-${opt:stage}-batch-customers-out
+  bckname_customer_dest: "arn:aws:s3:::dev1-accounting-t1-batch-inputfiledirectory"
+  bckname_customer_in: bi-${opt:region}-${opt:stage}-batch-customers-in
 
 resources:
   Resources:
@@ -50,7 +54,7 @@ resources:
     ResourceOutputBucket1:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: bi-${opt:region}-${opt:stage}-batch-accounting-out
+        BucketName: ${self:custom.bckname_accounting_out}
         PublicAccessBlockConfiguration:
           BlockPublicAcls: false
           BlockPublicPolicy: false
@@ -65,7 +69,27 @@ resources:
               Status: Enabled
               Prefix: ${self:custom.prefix}
               Destination:
-                Bucket: "arn:aws:s3:::dev1-accounting-t1-batch-inputfiledirectory"
+                Bucket: ${self:custom.bckname_customer_dest}
+                StorageClass: STANDARD
+    ResourceOutputBucket2:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.bckname_customer_out}
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: false
+          BlockPublicPolicy: false
+          IgnorePublicAcls: false
+          RestrictPublicBuckets: false
+        VersioningConfiguration:
+          Status: "Enabled"
+        ReplicationConfiguration:
+          Role: "arn:aws:iam::${self:custom.intg_acc}:role/${self:custom.role}"
+          Rules:
+            - Id: rpl-rule
+              Status: Enabled
+              Prefix: ${self:custom.prefix}
+              Destination:
+                Bucket: ${self:custom.bckname_customer_dest}
                 StorageClass: STANDARD
     ReplicationCrossRole:
       Type: "AWS::IAM::Role"
@@ -92,18 +116,18 @@ resources:
                 - s3:GetObjectVersionAcl
                 - s3:GetObjectVersionTagging
               Resource:
-                - arn:aws:s3:::bi-${opt:region}-${opt:stage}-batch-accounting-out/*
+                - arn:aws:s3:::${self:custom.bckname_accounting_out}/*
             - Effect: Allow
               Action:
                 - s3:ListBucket
                 - s3:GetReplicationConfiguration
               Resource:
-                - arn:aws:s3:::bi-${opt:region}-${opt:stage}-batch-accounting-out
+                - arn:aws:s3:::${self:custom.bckname_accounting_out}
             - Effect: Allow
               Action:
                 - s3:ReplicateObject
                 - s3:ReplicateDelete
                 - s3:ReplicateTags
-              Resource: arn:aws:s3:::dev1-accounting-t1-batch-inputfiledirectory
+              Resource: arn:aws:s3:::dev1-accounting-t1-batch-inputfiledirectory/*
         Roles:
           - !Ref ReplicationCrossRole
