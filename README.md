@@ -1,111 +1,37 @@
 # s3rpldemo
 
-service: S3-rpl-stack
-#frameworkVersion: "3"
-provider:
-  name: aws
-  stage: ${opt:stage}
-  region: ${opt:region}
-custom:
-  prefix: desa
-  intg_acc: XXXX
-  trans_acc: XXXX
-  role: rpl-cross-role
+# Introduction
 
-resources:
-  Resources:
-    ResourceInBucket1:
-      Type: AWS::S3::Bucket
-      Properties:
-        BucketName: bi-${opt:region}-${opt:stage}-batch-accounting-in
-        PublicAccessBlockConfiguration:
-          BlockPublicAcls: false
-          BlockPublicPolicy: false
-          IgnorePublicAcls: false
-          RestrictPublicBuckets: false
-        VersioningConfiguration:
-          Status: "Enabled"
-    RplBucketPolicy:
-      Type: AWS::S3::BucketPolicy
-      Properties:
-        Bucket: bi-${opt:region}-${opt:stage}-batch-accounting-in
-        PolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-            - Sid: Set permissions for objects
-              Effect: Allow
-              Principal:
-                AWS: arn:aws:iam::${self:custom.trans_acc}:role/rpl-trans-role
-              Action:
-                - s3:ReplicateObject
-                - s3:ReplicateDelete
-              Resource: arn:aws:s3:::bi-${opt:region}-${opt:stage}-batch-accounting-in/*
-            - Sid: Set permissions on bucket
-              Effect: Allow
-              Principal:
-                AWS: arn:aws:iam::${self:custom.trans_acc}:role/rpl-trans-role
-              Action:
-                - s3:List*
-                - s3:GetBucketVersioning
-                - s3:PutBucketVersioning
-              Resource: arn:aws:s3:::bi-${opt:region}-${opt:stage}-batch-accounting-in
-    ResourceOutputBucket1:
-      Type: AWS::S3::Bucket
-      Properties:
-        BucketName: bi-${opt:region}-${opt:stage}-batch-accounting-out
-        PublicAccessBlockConfiguration:
-          BlockPublicAcls: false
-          BlockPublicPolicy: false
-          IgnorePublicAcls: false
-          RestrictPublicBuckets: false
-        VersioningConfiguration:
-          Status: "Enabled"
-        ReplicationConfiguration:
-          Role: "arn:aws:iam::${self:custom.intg_acc}:role/${self:custom.role}"
-          Rules:
-            - Id: rpl-rule
-              Status: Enabled
-              Prefix: ${self:custom.prefix}
-              Destination:
-                Bucket: "arn:aws:s3:::dev1-accounting-t1-batch-inputfiledirectory"
-                StorageClass: STANDARD
-    ReplicationCrossRole:
-      Type: "AWS::IAM::Role"
-      Properties:
-        RoleName: "${self:custom.role}"
-        AssumeRolePolicyDocument:
-          Statement:
-            - Action:
-                - "sts:AssumeRole"
-              Effect: Allow
-              Principal:
-                Service:
-                  - s3.amazonaws.com
-    BucketRplCrossPolicy:
-      Type: "AWS::IAM::Policy"
-      Properties:
-        PolicyName: BktCrossRplPolicy
-        PolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-            - Effect: Allow
-              Action:
-                - s3:GetObjectVersionForReplication
-                - s3:GetObjectVersionAcl
-                - s3:GetObjectVersionTagging
-              Resource:
-                - arn:aws:s3:::bi-${opt:region}-${opt:stage}-batch-accounting-out/*
-            - Effect: Allow
-              Action:
-                - s3:ListBucket
-                - s3:GetReplicationConfiguration
-              Resource:
-                - arn:aws:s3:::bi-${opt:region}-${opt:stage}-batch-accounting-out
-            - Effect: Allow
-              Action:
-                - s3:ReplicateObject
-                - s3:ReplicateDelete
-                - s3:ReplicateTags
-              Resource: arn:aws:s3:::dev1-accounting-t1-batch-inputfiledirectory
-        Roles:
-          - !Ref ReplicationCrossRole
+TODO: Testing aws S3 bucket replication using pipeline
+
+#Steps:
+Create repo in dummyProjects
+Clone repo into own pc
+Commit and push baseline project
+In azure devops Pipelines>Pipelines (\_build) and using the no gui interface:
+
+- Set build pipeline using the windows image
+- Add steps
+- Save and run
+  In azure devops Pipelines>Releases (\_release):
+- +New > New release Pipeline
+- +Add Azure Repos tag: repos
+- Set stages (dev,qa,prod)
+- Add tasks to stage´s job
+- Create release
+
+First commit in develop branch
+
+Replication references
+Configuring replication for source and destination buckets owned by the same account
+
+sls deploy --stage dev --region useast1
+
+### Para recibir archivos en la cuenta propia desde la cuenta transversal:
+
+- Cuenta transversal necesita tener el bucket con regla de replicación y un role con permisos para S3
+- Cuenta propia necesita tener un bucket con versionamiento
+- Cuenta propia necesita un bucketPolicy que haga referencia al bucket propio y referencia al role de la cuenta transversal
+
+#Troubleshoot
+Cambiar el destino a cross account y no same account
